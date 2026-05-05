@@ -1,0 +1,16 @@
+name: Decision Journal
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    types: [opened, synchronize, closed]
+  release:
+    types: [created]
+  workflow_dispatch:
+jobs:
+  publish-decision:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate Decision Record
+        id

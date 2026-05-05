@@ -1,0 +1,624 @@
+import os
+
+HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARRA Decision Journal</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+/* CSS Reset and variables */
+:root {
+    --bg-color: #F5F7FA;
+    --card-bg: #FFFFFF;
+    --border-color: #E5E7EB;
+    --primary: #2563EB;
+    --success: #16A34A;
+    --warning: #F59E0B;
+    --error: #DC2626;
+    --text-primary: #111827;
+    --text-secondary: #6B7280;
+    --sidebar-width: 240px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+body { background-color: var(--bg-color); color: var(--text-primary); display: flex; min-height: 100vh; }
+
+/* Layout */
+.sidebar { width: var(--sidebar-width); background: var(--card-bg); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0; }
+.sidebar-header { padding: 24px; font-size: 20px; font-weight: 700; color: var(--primary); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 10px;}
+.sidebar-menu { list-style: none; padding: 16px 0; }
+.sidebar-menu li { padding: 12px 24px; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; gap: 12px; font-weight: 500; transition: background 0.2s, color 0.2s; }
+.sidebar-menu li:hover { background: #F3F4F6; color: var(--text-primary); }
+.sidebar-menu li.active { color: var(--primary); background: #EFF6FF; border-right: 3px solid var(--primary); }
+
+.main-content { margin-left: var(--sidebar-width); flex: 1; padding: 24px; max-width: 1200px; margin-right: auto; }
+
+/* Header */
+.page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+.header-titles h1 { font-size: 28px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
+.header-titles p { font-size: 14px; color: var(--text-secondary); max-width: 600px; line-height: 1.5; }
+.btn-primary { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 6px; font-weight: 500; cursor: pointer; transition: background 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+.btn-primary:hover { background: #1D4ED8; }
+.btn-secondary { background: white; color: var(--text-primary); border: 1px solid var(--border-color); padding: 8px 14px; border-radius: 6px; font-weight: 500; cursor: pointer; transition: background 0.2s; }
+.btn-secondary:hover { background: #F9FAFB; }
+
+/* Cards */
+.card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.card-header { font-size: 18px; font-weight: 600; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+
+/* Badges */
+.badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; }
+.badge.blue { background: #EFF6FF; color: var(--primary); }
+.badge.orange { background: #FFFBEB; color: var(--warning); }
+.badge.green { background: #F0FDF4; color: var(--success); }
+
+/* Top Card Layout */
+.top-card { display: flex; justify-content: space-between; align-items: center; }
+.top-card-left h2 { font-size: 24px; margin-bottom: 4px; }
+.top-card-left p { color: var(--text-secondary); font-size: 14px; }
+.top-card-right { display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
+
+/* Lists */
+.list-item { padding: 16px 0; border-bottom: 1px solid var(--border-color); }
+.list-item:last-child { border-bottom: none; padding-bottom: 0; }
+.item-title { font-weight: 600; margin-bottom: 4px; color: var(--text-primary); }
+.item-meta { font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; gap: 12px; }
+.item-meta i { font-size: 12px; }
+
+/* Conflicts List */
+.conflict-item .item-title { color: var(--text-primary); }
+.conflict-resolution { font-size: 14px; color: var(--text-secondary); margin: 6px 0; }
+
+/* Horizontal Timeline */
+.timeline-container { display: flex; justify-content: space-between; position: relative; padding: 20px 0; }
+.timeline-line { position: absolute; top: 35px; left: 30px; right: 30px; height: 2px; background: var(--border-color); z-index: 1; }
+.timeline-step { display: flex; flex-direction: column; align-items: center; z-index: 2; position: relative; width: 120px; text-align: center; }
+.timeline-circle { width: 32px; height: 32px; border-radius: 50%; background: var(--card-bg); border: 2px solid var(--border-color); display: flex; align-items: center; justify-content: center; margin-bottom: 12px; color: var(--text-secondary); font-size: 14px; }
+.timeline-step.completed .timeline-circle { border-color: var(--primary); background: var(--primary); color: white; }
+.timeline-label { font-size: 12px; font-weight: 500; color: var(--text-secondary); line-height: 1.4; }
+.timeline-step.completed .timeline-label { color: var(--text-primary); }
+
+/* Table-like rows */
+.history-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-color); }
+.history-row:last-child { border-bottom: none; }
+.history-left { display: flex; align-items: center; gap: 16px; }
+.history-version { font-weight: 600; width: 60px; }
+.history-stats { color: var(--text-secondary); font-size: 14px; }
+
+/* Vertical Timeline for Traceability */
+.vertical-timeline { border-left: 2px solid var(--border-color); margin-left: 8px; padding-left: 20px; }
+.vertical-timeline-item { position: relative; margin-bottom: 20px; }
+.vertical-timeline-item:last-child { margin-bottom: 0; }
+.vertical-timeline-item::before { content: ''; position: absolute; left: -27px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: var(--primary); border: 2px solid var(--card-bg); box-shadow: 0 0 0 1px var(--border-color); }
+.pulse-icon { animation: pulse-animation 2s infinite; color: var(--success); }
+@keyframes pulse-animation { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+/* Modal / Layers */
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(17, 24, 39, 0.5); z-index: 100; display: none; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+.modal-content { background: var(--card-bg); width: 90%; max-width: 900px; max-height: 90vh; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; }
+.modal-header { padding: 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+.modal-title { font-size: 20px; font-weight: 600; }
+.close-modal { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-secondary); }
+.modal-body { padding: 24px; overflow-y: auto; flex: 1; }
+.modal-footer { padding: 16px 24px; border-top: 1px solid var(--border-color); background: #F9FAFB; display: flex; justify-content: flex-end; gap: 12px; }
+
+/* Grid Layouts */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+.trace-item { display: flex; gap: 12px; margin-bottom: 16px; background: #F9FAFB; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); }
+.trace-icon { margin-top: 2px; color: var(--primary); }
+.trace-details div { font-size: 14px; }
+.trace-details .trace-title { font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+.trace-details .trace-meta { color: var(--text-secondary); font-size: 13px; }
+
+/* Loader */
+#loader { text-align: center; padding: 40px; color: var(--text-secondary); }
+
+.detail-section { margin-bottom: 24px; }
+.detail-section h3 { font-size: 16px; margin-bottom: 12px; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 14px; }
+.info-label { color: var(--text-secondary); font-weight: 500; }
+.info-value { color: var(--text-primary); font-weight: 600; }
+.evidence-list { list-style: none; }
+.evidence-list li { padding: 8px 0; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+.evidence-list li a { color: var(--primary); text-decoration: none; }
+
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="sidebar-header">
+        <i class="fa-solid fa-shield-halved"></i> ARRA
+    </div>
+    <ul class="sidebar-menu">
+        <li onclick="showMock('Dashboard', this)"><i class="fa-solid fa-chart-line"></i> Dashboard</li>
+        <li class="active" onclick="location.reload()"><i class="fa-solid fa-book-journal-whills"></i> Decision Journal</li>
+        <li onclick="showMock('Published Releases', this)"><i class="fa-solid fa-box-archive"></i> Published Releases</li>
+        <li onclick="showMock('Reports', this)"><i class="fa-solid fa-file-lines"></i> Reports</li>
+        <li onclick="showMock('Evidence', this)"><i class="fa-solid fa-magnifying-glass-chart"></i> Evidence</li>
+        <li onclick="showMock('Approvals', this)"><i class="fa-solid fa-stamp"></i> Approvals</li>
+    </ul>
+</div>
+
+<div class="main-content">
+    <div class="page-header">
+        <div class="header-titles">
+            <h1>Decision Journal</h1>
+            <p>This section provides a clear overview of published releases, decisions, conflicts, and supporting evidence.</p>
+            <div style="margin-top: 12px; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; background: #F0FDF4; padding: 6px 12px; border-radius: 20px; border: 1px solid #BBF7D0; color: #166534;">
+                <i class="fa-solid fa-satellite-dish pulse-icon"></i> AI Pipeline Ingestion JSON: Listening...
+            </div>
+        </div>
+        <button class="btn-primary" onclick="openLayer2()">
+            <i class="fa-solid fa-file-contract"></i> Open full report
+        </button>
+    </div>
+
+    <div id="loader"><i class="fa-solid fa-spinner fa-spin fa-2x"></i><br>Loading Journal Data...</div>
+
+    <!-- Mock Content Area -->
+    <div id="mock-content" style="display: none;"></div>
+
+    <div id="dashboard-content" style="display: none;">
+        <!-- Top Card -->
+        <div class="card top-card">
+            <div class="top-card-left">
+                <h2 id="latest-release-version">Release v--</h2>
+                <p id="latest-release-meta">Published on -- | Baseline: --</p>
+            </div>
+            <div class="top-card-right" id="latest-badges">
+                <!-- Badges injected here -->
+            </div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="card">
+            <div class="card-header">Decision Path</div>
+            <div class="timeline-container" id="timeline-container">
+                <div class="timeline-line"></div>
+                <!-- Steps injected here -->
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <!-- Approved Changes -->
+            <div class="card">
+                <div class="card-header">Approved Changes</div>
+                <div id="approved-changes-list">
+                    <!-- Changes injected here -->
+                </div>
+            </div>
+
+            <!-- Resolved Conflicts -->
+            <div class="card">
+                <div class="card-header">Resolved Conflicts</div>
+                <div id="resolved-conflicts-list">
+                    <!-- Conflicts injected here -->
+                </div>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <!-- Traceability Event Timeline (Main Layer) -->
+            <div class="card">
+                <div class="card-header">Recent Traceability Events</div>
+                <div class="vertical-timeline" id="traceability-timeline-layer1">
+                    <!-- Traceability events injected here -->
+                </div>
+            </div>
+
+            <!-- Previous Releases -->
+            <div class="card">
+                <div class="card-header">Previous Releases</div>
+                <div id="previous-releases-list">
+                    <!-- Previous releases injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Layer 2 & 3 Modal -->
+<div class="modal-overlay" id="report-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title" id="modal-title">Release Full Report</h2>
+            <button class="close-modal" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body" id="modal-body">
+            <!-- Layer 2/3 content injected here -->
+        </div>
+        <div class="modal-footer">
+            <div style="flex: 1; display: flex; gap: 12px;">
+                <button class="btn-secondary" id="btn-export-json" onclick="exportReport('json')" title="Export as JSON">
+                    <i class="fa-solid fa-file-code"></i> JSON
+                </button>
+                <button class="btn-secondary" id="btn-export-pdf" onclick="exportReport('pdf')" title="Export as PDF">
+                    <i class="fa-solid fa-file-pdf"></i> PDF
+                </button>
+            </div>
+            <button class="btn-secondary" onclick="closeModal()">Close</button>
+            <button class="btn-primary" id="btn-deep-view" onclick="openLayer3()">
+                <i class="fa-solid fa-sitemap"></i> View Deep Evidence (Layer 3)
+            </button>
+            <button class="btn-secondary" id="btn-back-layer2" style="display:none;" onclick="openLayer2(true)">
+                <i class="fa-solid fa-arrow-left"></i> Back to Report
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+const API_URL = 'http://localhost:8000';
+let currentRelease = null;
+let allPublished = [];
+
+async function init() {
+    try {
+        const [latestRes, historyRes] = await Promise.all([
+            fetch(`${API_URL}/published_versions/latest`),
+            fetch(`${API_URL}/published_versions`)
+        ]);
+        
+        if (!latestRes.ok) {
+            document.getElementById('loader').innerHTML = `
+                <div style="padding: 20px; color: var(--text-secondary);">
+                    <i class="fa-solid fa-database fa-3x" style="color: var(--warning); margin-bottom:16px;"></i>
+                    <h3>No Release Data Found</h3>
+                    <p style="margin-top: 8px;">The dashboard database is currently empty.</p>
+                    <p style="margin-top: 16px; font-weight: bold; color: var(--primary);">Please run <code>seed.bat</code> to inject demo data!</p>
+                </div>
+            `;
+            return;
+        }
+
+        currentRelease = await latestRes.json();
+        const historyData = await historyRes.json();
+        allPublished = historyData.versions || [];
+
+        renderDashboard();
+    } catch (e) {
+        document.getElementById('loader').innerHTML = `<span style="color:var(--error)">Error loading data: ${e.message}. Backend might not be running.</span>`;
+    }
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return 'N/A';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' });
+}
+
+function renderDashboard() {
+    document.getElementById('loader').style.display = 'none';
+    document.getElementById('dashboard-content').style.display = 'block';
+
+    const { overview, decisions, conflicts, nulla_osta } = currentRelease;
+
+    // Top Card
+    document.getElementById('latest-release-version').textContent = `Release ${overview.version}`;
+    document.getElementById('latest-release-meta').textContent = `Published on ${formatDate(overview.publication_date)} | Baseline: ${overview.baseline_id}`;
+    
+    const isApproved = nulla_osta && nulla_osta.some(n => n.status === 'granted');
+    
+    document.getElementById('latest-badges').innerHTML = `
+        <span class="badge blue"><i class="fa-solid fa-check"></i> ${decisions.length} approved changes</span>
+        <span class="badge orange"><i class="fa-solid fa-triangle-exclamation"></i> ${conflicts.length} resolved conflicts</span>
+        ${isApproved ? '<span class="badge green"><i class="fa-solid fa-stamp"></i> Final approval completed</span>' : ''}
+    `;
+
+    // Approved Changes
+    const changesHtml = decisions.map(d => `
+        <div class="list-item">
+            <div class="item-title">${d.brief_description} (${d.object_affected})</div>
+            <div class="item-meta">
+                <span><i class="fa-regular fa-user"></i> Proposed: ${d.proposed_by} | Approv: ${d.approved_by}</span>
+                <span><i class="fa-regular fa-clock"></i> ${formatDate(d.timestamp)}</span>
+            </div>
+        </div>
+    `).join('');
+    document.getElementById('approved-changes-list').innerHTML = changesHtml || '<div class="list-item">No changes recorded.</div>';
+
+    // Resolved Conflicts
+    const conflictsHtml = conflicts.map(c => `
+        <div class="list-item conflict-item">
+            <div class="item-title">${c.description}</div>
+            <div class="conflict-resolution"><strong>Resolution:</strong> ${c.resolution}</div>
+            <div class="item-meta">
+                <span><i class="fa-solid fa-user-shield"></i> Resolved by: ${c.resolved_by}</span>
+                <span style="text-transform: capitalize;"><i class="fa-solid fa-circle-exclamation"></i> Sev: ${c.severity}</span>
+            </div>
+        </div>
+    `).join('');
+    document.getElementById('resolved-conflicts-list').innerHTML = conflictsHtml || '<div class="list-item">No conflicts recorded.</div>';
+
+    // Timeline Path
+    renderTimeline();
+
+    // Traceability Timeline (Layer 1) - Shows last 5 events
+    const traceEvents = (currentRelease.events || []).slice(-5).reverse();
+    document.getElementById('traceability-timeline-layer1').innerHTML = traceEvents.map(e => `
+        <div class="vertical-timeline-item">
+            <div style="font-weight: 600; font-size: 14px; color: var(--text-primary);">${e.type.replace(/_/g, ' ')}</div>
+            <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">${e.description}</div>
+            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 6px;"><i class="fa-regular fa-clock"></i> ${formatDate(e.timestamp)} | <i class="fa-solid fa-layer-group"></i> ${e.layer}</div>
+        </div>
+    `).join('') || '<div class="vertical-timeline-item">Waiting for AI pipeline events...</div>';
+
+    // Previous Releases
+    const prevReleasesHtml = allPublished.filter(v => v.version !== overview.version).map(v => `
+        <div class="history-row">
+            <div class="history-left">
+                <span class="history-version">${v.version}</span>
+                <span class="history-stats">${v.key_changes?.length || 0} approved changes — ${v.conflicts_addressed?.length || 0} conflicts</span>
+            </div>
+            <button class="btn-secondary" onclick="loadAndOpenReport('${v.version}')">Open report</button>
+        </div>
+    `).join('');
+    document.getElementById('previous-releases-list').innerHTML = prevReleasesHtml || '<div class="history-row">No previous releases.</div>';
+}
+
+function renderTimeline() {
+    const steps = [
+        { label: "Trigger Received", active: true },
+        { label: "AI Analysis", active: true },
+        { label: "Conflicts Handled", active: true },
+        { label: "Evidence Added", active: true },
+        { label: "Approvals (Nulla Osta)", active: true },
+        { label: "Published", active: true }
+    ];
+    
+    let html = '';
+    steps.forEach((step, idx) => {
+        let icon = '';
+        if (idx === 0) icon = 'fa-bolt';
+        if (idx === 1) icon = 'fa-microchip';
+        if (idx === 2) icon = 'fa-code-merge';
+        if (idx === 3) icon = 'fa-file-shield';
+        if (idx === 4) icon = 'fa-stamp';
+        if (idx === 5) icon = 'fa-rocket';
+
+        html += `
+            <div class="timeline-step ${step.active ? 'completed' : ''}">
+                <div class="timeline-circle"><i class="fa-solid ${icon}"></i></div>
+                <div class="timeline-label">${step.label}</div>
+            </div>
+        `;
+    });
+    document.getElementById('timeline-container').innerHTML = `<div class="timeline-line"></div>` + html;
+}
+
+function showMock(pageName, element) {
+    // Update active state in sidebar
+    document.querySelectorAll('.sidebar-menu li').forEach(li => li.classList.remove('active'));
+    if (element) element.classList.add('active');
+
+    // Hide journal, show mock
+    document.getElementById('dashboard-content').style.display = 'none';
+    const mockDiv = document.getElementById('mock-content');
+    
+    mockDiv.innerHTML = `
+        <div class="card" style="text-align: center; padding: 60px 20px;">
+            <i class="fa-solid fa-code-branch fa-3x" style="color: var(--primary); margin-bottom: 20px;"></i>
+            <h2 style="margin-bottom: 12px;">${pageName} Module</h2>
+            <p style="color: var(--text-secondary); max-width: 600px; margin: 0 auto;">
+                This section is currently displaying a mock structure. 
+                Once the AI pipeline is fully integrated, JSON files sent to the <code>/ai_pipeline/ingest</code> 
+                endpoint will automatically populate real data into this view.
+            </p>
+            <div style="margin-top: 30px; text-align: left; background: #111827; color: #10B981; padding: 20px; border-radius: 8px; font-family: monospace; max-width: 500px; margin: 30px auto 0 auto;">
+                // Expected incoming JSON shape:<br>
+                {<br>
+                &nbsp;&nbsp;"module_target": "${pageName.toLowerCase().replace(' ', '_')}",<br>
+                &nbsp;&nbsp;"status": "awaiting_pipeline_connection"<br>
+                }
+            </div>
+        </div>
+    `;
+    mockDiv.style.display = 'block';
+}
+
+const modal = document.getElementById('report-modal');
+
+async function loadAndOpenReport(version) {
+    try {
+        const res = await fetch(`${API_URL}/published_versions/${version}`);
+        currentRelease = await res.json();
+        openLayer2();
+    } catch (e) {
+        alert("Failed to load report for version " + version);
+    }
+}
+
+function openLayer2(isBack = false) {
+    const { overview, decisions, conflicts, nulla_osta, release_declaration, baseline } = currentRelease;
+    
+    document.getElementById('modal-title').textContent = `Decision Ledger & Nulla Osta - ${overview.version}`;
+    document.getElementById('btn-deep-view').style.display = 'inline-flex';
+    document.getElementById('btn-back-layer2').style.display = 'none';
+
+    let html = `
+        <div class="detail-section">
+            <h3>Release Summary</h3>
+            <div class="info-grid">
+                <div><span class="info-label">Version:</span> <span class="info-value">${overview.version}</span></div>
+                <div><span class="info-label">Date:</span> <span class="info-value">${formatDate(overview.publication_date)}</span></div>
+                <div><span class="info-label">Baseline ID:</span> <span class="info-value">${overview.baseline_id}</span></div>
+                <div><span class="info-label">Status:</span> <span class="info-value" style="color:var(--success)">${overview.status.toUpperCase()}</span></div>
+            </div>
+        </div>
+    `;
+
+    if (release_declaration) {
+        html += `
+        <div class="detail-section" style="background:#F0FDF4; padding:16px; border-radius:8px; border:1px solid #BBF7D0;">
+            <h3><i class="fa-solid fa-file-signature"></i> Dichiarazione di Rilascio</h3>
+            <p style="font-style:italic; font-size:14px; margin-bottom:12px;">"${release_declaration.declaration_text}"</p>
+            <div class="info-grid">
+                <div><span class="info-label">Signatory:</span> <span class="info-value">${release_declaration.person} (${release_declaration.role})</span></div>
+                <div><span class="info-label">Place:</span> <span class="info-value">${release_declaration.place}</span></div>
+                <div><span class="info-label">Date:</span> <span class="info-value">${formatDate(release_declaration.timestamp)}</span></div>
+                <div><span class="info-label">Signature Ref:</span> <span class="info-value" style="font-family:monospace; font-size:12px;">${release_declaration.signature_ref}</span></div>
+            </div>
+        </div>`;
+    }
+
+    if (decisions && decisions.length > 0) {
+        html += `<div class="detail-section"><h3>Decision Ledger</h3>`;
+        decisions.forEach(d => {
+            html += `
+            <div class="card" style="box-shadow:none; padding:16px; margin-bottom:12px;">
+                <div style="font-weight:600; margin-bottom:8px;">${d.decision_id}: ${d.brief_description}</div>
+                <div class="info-grid" style="margin-bottom:12px;">
+                    <div><span class="info-label">Object:</span> <span class="info-value">${d.object_affected}</span></div>
+                    <div><span class="info-label">Status:</span> <span class="info-value">${d.status}</span></div>
+                    <div><span class="info-label">Previous State:</span> <span class="info-value">${d.previous_state}</span></div>
+                    <div><span class="info-label">New State:</span> <span class="info-value">${d.new_state}</span></div>
+                </div>
+                <div style="font-size:14px; margin-bottom:8px;"><span class="info-label">Reasoning:</span> ${d.reasoning}</div>
+                <div style="font-size:14px;"><span class="info-label">Proposed by:</span> ${d.proposed_by} | <span class="info-label">Approved by:</span> ${d.approved_by}</div>
+            </div>`;
+        });
+        html += `</div>`;
+    }
+
+    if (nulla_osta && nulla_osta.length > 0) {
+        html += `<div class="detail-section"><h3>Dettagli Nulla Osta</h3>
+        <table style="width:100%; text-align:left; font-size:14px; border-collapse: collapse;">
+            <tr style="border-bottom:2px solid var(--border-color);"><th style="padding:8px;">Decision</th><th style="padding:8px;">Operator Role</th><th style="padding:8px;">Operator</th><th style="padding:8px;">Status</th><th style="padding:8px;">Date</th></tr>
+        `;
+        nulla_osta.forEach(n => {
+            html += `<tr style="border-bottom:1px solid var(--border-color);">
+                <td style="padding:8px;">${n.decision_id}</td>
+                <td style="padding:8px;">${n.operator_role}</td>
+                <td style="padding:8px;">${n.operator}</td>
+                <td style="padding:8px; color:${n.status==='granted'?'var(--success)':'var(--error)'}; font-weight:600;">${n.status.toUpperCase()}</td>
+                <td style="padding:8px;">${formatDate(n.nulla_osta_date)}</td>
+            </tr>`;
+        });
+        html += `</table></div>`;
+    }
+
+    document.getElementById('modal-body').innerHTML = `<div id="report-export-area" style="padding-right:10px;">
+        <h2 style="margin-bottom: 16px; border-bottom: 2px solid var(--border-color); padding-bottom: 8px; display: none;" id="pdf-title">${document.getElementById('modal-title').textContent}</h2>
+        ${html}
+    </div>`;
+    modal.style.display = 'flex';
+}
+
+function openLayer3() {
+    const { events, decisions, overview } = currentRelease;
+    
+    document.getElementById('modal-title').textContent = `Historical Reports & Traceability - ${overview.version}`;
+    document.getElementById('btn-deep-view').style.display = 'none';
+    document.getElementById('btn-back-layer2').style.display = 'inline-flex';
+
+    let html = `<div class="detail-section"><h3>Historical Events Traceability</h3>`;
+    
+    if (events && events.length > 0) {
+        events.forEach(e => {
+            let icon = 'fa-clock';
+            if(e.type.includes('FAIL') || e.type.includes('CONFLICT')) icon = 'fa-triangle-exclamation';
+            else if(e.type.includes('PASS') || e.type.includes('APPROV') || e.type.includes('GRANTED')) icon = 'fa-check-circle';
+            else if(e.type.includes('AI')) icon = 'fa-robot';
+            
+            html += `
+            <div class="trace-item">
+                <div class="trace-icon"><i class="fa-solid ${icon}"></i></div>
+                <div class="trace-details">
+                    <div class="trace-title">${e.type.replace(/_/g, ' ')}: ${e.description}</div>
+                    <div class="trace-meta">
+                        ${formatDate(e.timestamp)} | Layer: ${e.layer} | Relates to: ${e.related_to}
+                    </div>
+                </div>
+            </div>`;
+        });
+    } else {
+        html += `<p style="font-size:14px;">No event traces available.</p>`;
+    }
+    html += `</div>`;
+
+    html += `<div class="detail-section"><h3>Source Evidence Details</h3>`;
+    decisions.forEach(d => {
+        if (d.source_evidence && d.source_evidence.length > 0) {
+            html += `<div style="margin-bottom:16px;">
+                <div style="font-weight:600; font-size:14px; margin-bottom:8px;">${d.decision_id}: ${d.brief_description}</div>
+                <ul class="evidence-list">`;
+            d.source_evidence.forEach(ev => {
+                let typeIcon = 'fa-file';
+                if(ev.startsWith('email:')) typeIcon = 'fa-envelope';
+                if(ev.startsWith('pr:')) typeIcon = 'fa-code-pull-request';
+                if(ev.startsWith('message:')) typeIcon = 'fa-comment-dots';
+                
+                html += `<li><i class="fa-solid ${typeIcon}" style="color:var(--text-secondary)"></i> <span>${ev}</span></li>`;
+            });
+            html += `</ul></div>`;
+        }
+    });
+    html += `</div>`;
+
+    document.getElementById('modal-body').innerHTML = `<div id="report-export-area" style="padding-right:10px;">
+        <h2 style="margin-bottom: 16px; border-bottom: 2px solid var(--border-color); padding-bottom: 8px; display: none;" id="pdf-title">${document.getElementById('modal-title').textContent}</h2>
+        ${html}
+    </div>`;
+}
+
+function closeModal() {
+    modal.style.display = 'none';
+}
+
+modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeModal();
+});
+
+function exportReport(type) {
+    if (!currentRelease) return;
+    const version = currentRelease.overview.version;
+    
+    if (type === 'json') {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentRelease, null, 2));
+        const a = document.createElement('a');
+        a.href = dataStr;
+        a.download = `ARRA_Release_Report_${version}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    } else if (type === 'pdf') {
+        const btn = document.getElementById('btn-export-pdf');
+        const oldContent = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Exporting...';
+        btn.disabled = true;
+
+        const titleEl = document.getElementById('pdf-title');
+        if(titleEl) titleEl.style.display = 'block'; // Temporarily show title for the PDF
+
+        const element = document.getElementById('report-export-area');
+        const opt = {
+            margin:       0.5,
+            filename:     `ARRA_Release_Report_${version}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true, logging: false },
+            jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(element).save().then(() => {
+            btn.innerHTML = oldContent;
+            btn.disabled = false;
+            if(titleEl) titleEl.style.display = 'none'; // Hide title again
+        });
+    }
+}
+
+init();
+</script>
+</body>
+</html>"""
+
+output_path = os.path.join(os.path.dirname(__file__), "frontend", "index.html")
+os.makedirs(os.path.dirname(output_path), exist_ok=True)
+with open(output_path, "w", encoding="utf-8") as f:
+    f.write(HTML)
+print("✅ Frontend built successfully.")
