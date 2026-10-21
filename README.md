@@ -1,6 +1,6 @@
-# 🚀 Decision Journal Dashboard - 100% WORKING
+# 🚀 Decision Journal Dashboard -
 
-## 🎯 **Super Simple Start** (3 clicks)
+#
 
 ```
 STEP
